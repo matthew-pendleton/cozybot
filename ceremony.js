@@ -1,0 +1,167 @@
+const {
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ComponentType,
+} = require("discord.js");
+
+const { addMarriage, adjustRelationshipScore } = require("./relationship");
+const dialogue = require("./dialogue");
+
+const COZY_COLOR = 0xf4a7b9;
+
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function mention(id) {
+  return `<@${id}>`;
+}
+
+async function runCeremony({ message, partnerAId, partnerBId }) {
+  const state = {
+    officiantId: null,
+    flowerGirlId: null,
+  };
+
+  const lobbyEmbed = new EmbedBuilder()
+    .setColor(COZY_COLOR)
+    .setTitle("💒 Wedding Ceremony Lobby")
+    .setDescription(
+      [
+        `${mention(partnerAId)} + ${mention(partnerBId)} are getting married!`,
+        "",
+        "Pick a role to help with the ceremony:",
+        "- 📖 Officiant (1 slot)",
+        "- 💐 Flower Girl (1 slot)",
+      ].join("\n")
+    )
+    .setFooter({ text: "Roles lock in after 60 seconds." });
+
+  const roleRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("cozybot:ceremony:role:officiant")
+      .setEmoji("📖")
+      .setLabel("Officiant")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId("cozybot:ceremony:role:flower")
+      .setEmoji("💐")
+      .setLabel("Flower Girl")
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  await message.edit({ embeds: [lobbyEmbed], components: [roleRow] });
+
+  const endAt = Date.now() + 60_000;
+  while (Date.now() < endAt) {
+    const remaining = Math.max(1, endAt - Date.now());
+    if (state.officiantId && state.flowerGirlId) break;
+
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const btn = await message.awaitMessageComponent({
+        componentType: ComponentType.Button,
+        time: remaining,
+        filter: (i) =>
+          i.customId.startsWith("cozybot:ceremony:role:") &&
+          i.user.id !== partnerAId &&
+          i.user.id !== partnerBId,
+      });
+
+      const role = btn.customId.split(":").at(-1);
+      if (role === "officiant") {
+        if (state.officiantId) {
+          // eslint-disable-next-line no-await-in-loop
+          await btn.reply({ ephemeral: true, content: "📖 That role is already taken." });
+          continue;
+        }
+        state.officiantId = btn.user.id;
+        // eslint-disable-next-line no-await-in-loop
+        await btn.reply({ ephemeral: true, content: "📖 You’re the officiant!" });
+      } else if (role === "flower") {
+        if (state.flowerGirlId) {
+          // eslint-disable-next-line no-await-in-loop
+          await btn.reply({ ephemeral: true, content: "💐 That role is already taken." });
+          continue;
+        }
+        state.flowerGirlId = btn.user.id;
+        // eslint-disable-next-line no-await-in-loop
+        await btn.reply({ ephemeral: true, content: "💐 You’re the flower girl!" });
+      } else {
+        // eslint-disable-next-line no-await-in-loop
+        await btn.reply({ ephemeral: true, content: "💌 Unknown role." });
+      }
+    } catch {
+      break;
+    }
+  }
+
+  const officiantName = state.officiantId ? mention(state.officiantId) : "a mysterious stranger";
+  const flowerName = state.flowerGirlId ? mention(state.flowerGirlId) : "a mysterious stranger";
+
+  const lines = [];
+  function embed() {
+    return new EmbedBuilder()
+      .setColor(COZY_COLOR)
+      .setTitle("💒 Wedding Ceremony")
+      .setDescription(lines.join("\n"));
+  }
+
+  lines.push(`${mention(partnerAId)} + ${mention(partnerBId)}`);
+  lines.push("");
+  lines.push(...dialogue.ceremonyOpening);
+  await message.edit({ embeds: [embed()], components: [] });
+  await sleep(2000);
+
+  lines.push("");
+  lines.push(`> 📖 **${officiantName}:** ${pick(dialogue.ceremonyOfficiantLines)}`);
+  await message.edit({ embeds: [embed()], components: [] });
+  await sleep(2000);
+
+  lines.push(`> 📖 **${officiantName}:** ${pick(dialogue.ceremonyOfficiantLines)}`);
+  await message.edit({ embeds: [embed()], components: [] });
+  await sleep(2000);
+
+  lines.push("");
+  lines.push(`> 💐 **${flowerName}:** ${pick(dialogue.ceremonyFlowerGirlMoments)}`);
+  await message.edit({ embeds: [embed()], components: [] });
+  await sleep(2000);
+
+  lines.push("");
+  lines.push(`**${mention(partnerAId)}’s vows:** ${pick(dialogue.ceremonyVows)}`);
+  await message.edit({ embeds: [embed()], components: [] });
+  await sleep(2000);
+
+  lines.push(`**${mention(partnerBId)}’s vows:** ${pick(dialogue.ceremonyVows)}`);
+  await message.edit({ embeds: [embed()], components: [] });
+  await sleep(2000);
+
+  lines.push("");
+  lines.push(pick(dialogue.ceremonyClosing));
+  await message.edit({ embeds: [embed()], components: [] });
+  await sleep(1500);
+
+  addMarriage(partnerAId, partnerBId);
+  const res = adjustRelationshipScore(partnerAId, partnerBId, 15);
+
+  const final = new EmbedBuilder()
+    .setColor(COZY_COLOR)
+    .setTitle("💍 Congratulations!")
+    .setDescription(`${mention(partnerAId)} and ${mention(partnerBId)} are now married.`)
+    .addFields({
+      name: "🌡 Relationship score",
+      value: `${res.after}/100  (**+${res.delta}**)`,
+    })
+    .setFooter({ text: "May your days be soft and your snacks plentiful." });
+
+  await message.edit({ embeds: [final], components: [] });
+}
+
+module.exports = { runCeremony };
+
