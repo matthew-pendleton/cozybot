@@ -738,17 +738,10 @@ async function handleDateInviteButton(interaction) {
 
   if (action === "accept") {
     const icon = findMarriageBetween(pending.inviterId, pending.inviteeId) ? "💍" : "🤍";
-    const total = getRelationshipScore(pending.inviterId, pending.inviteeId);
     const embed = new EmbedBuilder()
       .setColor(COZY_COLOR)
       .setTitle("💐 Date Accepted")
-      .setDescription(
-        [
-          `${inviterMention} + ${inviteeMention}`,
-          "",
-          tildesNetLine(0, total, icon),
-        ].join("\n")
-      )
+      .setDescription(`${inviterMention} + ${inviteeMention}`)
       .setFooter({ text: "Settling in…" });
 
     await interaction.update({ embeds: [embed], components: [] });
@@ -762,7 +755,9 @@ async function handleDateInviteButton(interaction) {
         webhookId: CLIENT_ID,
         webhookToken: interaction.token,
         inviterId: pending.inviterId,
+        inviterName: interaction.message.interaction?.user?.username ?? null,
         inviteeId: pending.inviteeId,
+        inviteeName: interaction.user.username,
       });
     } catch (err) {
       // eslint-disable-next-line no-console

@@ -42,6 +42,12 @@ function fmtPts(delta) {
   return "0";
 }
 
+function formatLine(template, senderMention, targetMention) {
+  return template
+    .replaceAll("{sender}", senderMention)
+    .replaceAll("{target}", targetMention);
+}
+
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -86,7 +92,16 @@ function waitForButton({ client, messageId, userId, allowedCustomIds, timeoutMs 
   });
 }
 
-async function runDate({ message, channel, webhookId, webhookToken, inviterId, inviteeId }) {
+async function runDate({
+  message,
+  channel,
+  webhookId,
+  webhookToken,
+  inviterId,
+  inviterName,
+  inviteeId,
+  inviteeName,
+}) {
   try {
     const client = message.client;
     const channelId = message.channelId;
@@ -99,20 +114,27 @@ async function runDate({ message, channel, webhookId, webhookToken, inviterId, i
     const inviterMention = `<@${inviterId}>`;
     const inviteeMention = `<@${inviteeId}>`;
     const icon = findMarriageBetween(inviterId, inviteeId) ? "💍" : "🤍";
+    let currentScore = getRelationshipScore(inviterId, inviteeId);
+    const titleLeft = inviterName || inviterMention;
+    const titleRight = inviteeName || inviteeMention;
 
     const beats = [];
     let netDelta = 0;
     let positiveRounds = 0;
     let negativeRounds = 0;
 
+    function statusLine() {
+      return `\`${icon} ${relationshipMeter(currentScore)}  ${currentScore}/100\``;
+    }
+
     function makeEmbed() {
       return new EmbedBuilder()
         .setColor(COZY_COLOR)
-        .setTitle(`💐 Date Night! ${inviterMention} + ${inviteeMention}`)
-        .setDescription(beats.join("\n"));
+        .setTitle(`💐 Date Night! ${titleLeft} + ${titleRight}`)
+        .setDescription(`${beats.join("\n")}\n\n${statusLine()}`);
     }
 
-    beats.push(`→ ${pick(dialogue.dateOpening)}`);
+    beats.push(`→ ${formatLine(pick(dialogue.dateOpening), inviterMention, inviteeMention)}`);
     await doEdit({
       embeds: [makeEmbed().toJSON()],
       components: [],
@@ -126,16 +148,18 @@ async function runDate({ message, channel, webhookId, webhookToken, inviterId, i
         const pts = rollPts(DATE_MOVES.roundPositive.pts, 1);
         const res = adjustRelationshipScore(inviterId, inviteeId, pts);
         netDelta += res.delta;
+        currentScore = res.after;
         beats.push(
-          `→ ${pick(dialogue.dateMiddle_positive)} **${fmtPts(pts)}pts**`
+          `→ ${formatLine(pick(dialogue.dateMiddle_positive), inviterMention, inviteeMention)} \`~ ${fmtPts(pts)}pts ~\``
         );
       } else {
         negativeRounds += 1;
         const pts = rollPts(DATE_MOVES.roundNegative.pts, -1);
         const res = adjustRelationshipScore(inviterId, inviteeId, pts);
         netDelta += res.delta;
+        currentScore = res.after;
         beats.push(
-          `→ ${pick(dialogue.dateMiddle_negative)} **${fmtPts(pts)}pts**`
+          `→ ${formatLine(pick(dialogue.dateMiddle_negative), inviterMention, inviteeMention)} \`~ ${fmtPts(pts)}pts ~\``
         );
       }
 
@@ -154,7 +178,7 @@ async function runDate({ message, channel, webhookId, webhookToken, inviterId, i
           : netDelta >= 0
             ? pick(dialogue.dateClosing_positive)
             : pick(dialogue.dateClosing_negative);
-    beats.push(`→ ${closing}`);
+    beats.push(`→ ${formatLine(closing, inviterMention, inviteeMention)}`);
     await doEdit({
       embeds: [makeEmbed().toJSON()],
       components: [],
@@ -202,8 +226,9 @@ async function runDate({ message, channel, webhookId, webhookToken, inviterId, i
       const pts = rollPts(DATE_MOVES.kissYes.pts, 1);
       const res = adjustRelationshipScore(inviterId, inviteeId, pts);
       netDelta += res.delta;
+      currentScore = res.after;
       beats.push(
-        `\n> ${pick(dialogue.dateKiss)} **${fmtPts(pts)}pts**`
+        `\n> ${formatLine(pick(dialogue.dateKiss), inviterMention, inviteeMention)} \`~ ${fmtPts(pts)}pts ~\``
       );
     } else {
       if (kissTimedOut) {
@@ -212,26 +237,19 @@ async function runDate({ message, channel, webhookId, webhookToken, inviterId, i
         const pts = rollPts(DATE_MOVES.kissNo.pts, -1);
         const res = adjustRelationshipScore(inviterId, inviteeId, pts);
         netDelta += res.delta;
+        currentScore = res.after;
         // No line for "No Kiss" choice; the penalty is reflected in net XP.
       }
     }
 
-    const total = getRelationshipScore(inviterId, inviteeId);
-    beats.push(
-      `\n~ ${netDelta >= 0 ? `+${netDelta}` : `${netDelta}`}pts • ${total}/100 ~\n\`${icon} ${relationshipMeter(total)}  ${total}/100\``
-    );
+    const total = currentScore;
     const finalEmbed = makeEmbed()
-      .setFooter({ text: "Date complete." })
       .addFields({
         name: "Net XP",
         value: netDelta >= 0 ? `**+${netDelta}**` : `**${netDelta}**`,
         inline: true,
       })
-      .addFields({
-        name: "Pair",
-        value: `${inviterMention} + ${inviteeMention}`,
-        inline: true,
-      });
+      .addFields({ name: "Score", value: `**${total}/100**`, inline: true });
 
     await doEdit({
       embeds: [finalEmbed.toJSON()],
