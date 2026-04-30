@@ -475,7 +475,7 @@ async function handleComplimentCommand(interaction) {
 
   const embed = new EmbedBuilder()
     .setColor(COZY_COLOR)
-    .setTitle("💌 A compliment, gently delivered")
+    .setTitle("💌 A compliment")
     .setDescription(formatLine(pick(dialogue.complimentLines), senderMention, targetMention))
     .addFields({
       name: "🌡 Relationship score",
