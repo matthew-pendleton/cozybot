@@ -131,25 +131,21 @@ async function runDate({
     let positiveRounds = 0;
     let negativeRounds = 0;
 
-    function statusLine() {
-      const safeScore = Number.isFinite(currentScore) ? currentScore : 0;
-      return `\`${icon} ${relationshipMeter(safeScore)}  ${safeScore}/100\``;
-    }
-
     function makeEmbed() {
       return new EmbedBuilder()
         .setColor(COZY_COLOR)
         .setTitle(`💐 Date Night! ${titleLeft} + ${titleRight}`)
-        .setDescription(`${beats.join("\n")}\n\n${statusLine()}`);
+        .setDescription(beats.join("\n"));
     }
 
   beats.push(
-    `*${senderBold} invited **${inviteeMention}** on a date.*\n${formatLine(
+    `*${senderBold} invited **${inviteeMention}** on a date.* ${formatLine(
       pick(dialogue.dateOpening),
       senderBold,
       targetBold
     )}`
   );
+  beats.push("");
     await doEdit({
       embeds: [makeEmbed().toJSON()],
       components: [],
@@ -264,7 +260,12 @@ async function runDate({
         value: netDelta >= 0 ? `**+${netDelta}**` : `**${netDelta}**`,
         inline: true,
       })
-      .addFields({ name: "Score", value: `**${total}/100**`, inline: true });
+      .addFields({ name: "Score", value: `**${total}/100**`, inline: true })
+      .addFields({
+        name: "Meter",
+        value: `\`${icon} ${relationshipMeter(total)}  ${total}/100\``,
+        inline: false,
+      });
 
     await doEdit({
       embeds: [finalEmbed.toJSON()],
