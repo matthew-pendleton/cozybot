@@ -41,7 +41,11 @@ function sleep(ms) {
 }
 
 async function editMessage(client, channelId, messageId, payload) {
-  await client.rest.patch(Routes.channelMessage(channelId, messageId), {
+  await client.rest.patch(Routes.channelMessage(channelId, messageId), { body: payload });
+}
+
+async function editInteractionMessage(client, webhookId, webhookToken, messageId, payload) {
+  await client.rest.patch(Routes.webhookMessage(webhookId, webhookToken, messageId), {
     body: payload,
   });
 }
@@ -76,11 +80,15 @@ function waitForButton({ client, messageId, userId, allowedCustomIds, timeoutMs 
   });
 }
 
-async function runDate({ message, channel, inviterId, inviteeId }) {
+async function runDate({ message, channel, webhookId, webhookToken, inviterId, inviteeId }) {
   try {
     const client = message.client;
     const channelId = message.channelId;
     const messageId = message.id;
+    const canUseWebhook = Boolean(webhookId && webhookToken);
+    const doEdit = canUseWebhook
+      ? (payload) => editInteractionMessage(client, webhookId, webhookToken, messageId, payload)
+      : (payload) => editMessage(client, channelId, messageId, payload);
 
     const inviterMention = `<@${inviterId}>`;
     const inviteeMention = `<@${inviteeId}>`;
@@ -99,7 +107,7 @@ async function runDate({ message, channel, inviterId, inviteeId }) {
     }
 
     beats.push(pick(dialogue.dateOpening));
-    await editMessage(client, channelId, messageId, {
+    await doEdit({
       embeds: [makeEmbed().toJSON()],
       components: [],
     });
@@ -125,7 +133,7 @@ async function runDate({ message, channel, inviterId, inviteeId }) {
         );
       }
 
-      await editMessage(client, channelId, messageId, {
+      await doEdit({
         embeds: [makeEmbed().toJSON()],
         components: [],
       });
@@ -141,7 +149,7 @@ async function runDate({ message, channel, inviterId, inviteeId }) {
             ? pick(dialogue.dateClosing_positive)
             : pick(dialogue.dateClosing_negative);
     beats.push(`\n${closing}`);
-    await editMessage(client, channelId, messageId, {
+    await doEdit({
       embeds: [makeEmbed().toJSON()],
       components: [],
     });
@@ -161,7 +169,7 @@ async function runDate({ message, channel, inviterId, inviteeId }) {
     const kissEmbed = makeEmbed().setFooter({
       text: "Invitee has 30 seconds to decide.",
     });
-    await editMessage(client, channelId, messageId, {
+    await doEdit({
       embeds: [kissEmbed.toJSON()],
       components: [kissRow.toJSON()],
     });
@@ -222,7 +230,7 @@ async function runDate({ message, channel, inviterId, inviteeId }) {
         inline: true,
       });
 
-    await editMessage(client, channelId, messageId, {
+    await doEdit({
       embeds: [finalEmbed.toJSON()],
       components: [],
     });
@@ -235,10 +243,17 @@ async function runDate({ message, channel, inviterId, inviteeId }) {
         .setColor(0xaa4465)
         .setTitle("💌 Date Night (oops)")
         .setDescription("Something went wrong while running this date. Try again in a moment.");
-      await editMessage(message.client, message.channelId, message.id, {
-        embeds: [embed.toJSON()],
-        components: [],
-      });
+      if (webhookId && webhookToken) {
+        await editInteractionMessage(message.client, webhookId, webhookToken, message.id, {
+          embeds: [embed.toJSON()],
+          components: [],
+        });
+      } else {
+        await editMessage(message.client, message.channelId, message.id, {
+          embeds: [embed.toJSON()],
+          components: [],
+        });
+      }
     } catch {
       // ignore
     }

@@ -4,6 +4,7 @@ const {
   ButtonBuilder,
   ButtonStyle,
   ComponentType,
+  Routes,
 } = require("discord.js");
 
 const {
@@ -49,9 +50,21 @@ async function rehydrateMessage(message, channelHint) {
   );
 }
 
-async function runCeremony({ message, channel, partnerAId, partnerBId }) {
+async function editInteractionMessage(client, webhookId, webhookToken, messageId, payload) {
+  await client.rest.patch(Routes.webhookMessage(webhookId, webhookToken, messageId), {
+    body: payload,
+  });
+}
+
+async function runCeremony({ message, channel, webhookId, webhookToken, partnerAId, partnerBId }) {
   // eslint-disable-next-line no-param-reassign
   message = await rehydrateMessage(message, channel);
+  const client = message.client;
+  const messageId = message.id;
+  const canUseWebhook = Boolean(webhookId && webhookToken);
+  const doEdit = canUseWebhook
+    ? (payload) => editInteractionMessage(client, webhookId, webhookToken, messageId, payload)
+    : (payload) => message.edit(payload);
 
   const state = {
     officiantId: null,
@@ -85,7 +98,7 @@ async function runCeremony({ message, channel, partnerAId, partnerBId }) {
       .setStyle(ButtonStyle.Secondary)
   );
 
-  await message.edit({ embeds: [lobbyEmbed], components: [roleRow] });
+  await doEdit({ embeds: [lobbyEmbed.toJSON()], components: [roleRow.toJSON()] });
 
   const endAt = Date.now() + 60_000;
   while (Date.now() < endAt) {
@@ -145,35 +158,35 @@ async function runCeremony({ message, channel, partnerAId, partnerBId }) {
   lines.push(`${mention(partnerAId)} + ${mention(partnerBId)}`);
   lines.push("");
   lines.push(...dialogue.ceremonyOpening);
-  await message.edit({ embeds: [embed()], components: [] });
+  await doEdit({ embeds: [embed().toJSON()], components: [] });
   await sleep(2000);
 
   lines.push("");
   lines.push(`> 📖 **${officiantName}:** ${pick(dialogue.ceremonyOfficiantLines)}`);
-  await message.edit({ embeds: [embed()], components: [] });
+  await doEdit({ embeds: [embed().toJSON()], components: [] });
   await sleep(2000);
 
   lines.push(`> 📖 **${officiantName}:** ${pick(dialogue.ceremonyOfficiantLines)}`);
-  await message.edit({ embeds: [embed()], components: [] });
+  await doEdit({ embeds: [embed().toJSON()], components: [] });
   await sleep(2000);
 
   lines.push("");
   lines.push(`> 💐 **${flowerName}:** ${pick(dialogue.ceremonyFlowerGirlMoments)}`);
-  await message.edit({ embeds: [embed()], components: [] });
+  await doEdit({ embeds: [embed().toJSON()], components: [] });
   await sleep(2000);
 
   lines.push("");
   lines.push(`**${mention(partnerAId)}’s vows:** ${pick(dialogue.ceremonyVows)}`);
-  await message.edit({ embeds: [embed()], components: [] });
+  await doEdit({ embeds: [embed().toJSON()], components: [] });
   await sleep(2000);
 
   lines.push(`**${mention(partnerBId)}’s vows:** ${pick(dialogue.ceremonyVows)}`);
-  await message.edit({ embeds: [embed()], components: [] });
+  await doEdit({ embeds: [embed().toJSON()], components: [] });
   await sleep(2000);
 
   lines.push("");
   lines.push(pick(dialogue.ceremonyClosing));
-  await message.edit({ embeds: [embed()], components: [] });
+  await doEdit({ embeds: [embed().toJSON()], components: [] });
   await sleep(1500);
 
   addMarriage(partnerAId, partnerBId);
@@ -193,7 +206,7 @@ async function runCeremony({ message, channel, partnerAId, partnerBId }) {
     )
     .setFooter({ text: "May your days be soft and your snacks plentiful." });
 
-  await message.edit({ embeds: [final], components: [] });
+  await doEdit({ embeds: [final.toJSON()], components: [] });
 }
 
 module.exports = { runCeremony };

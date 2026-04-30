@@ -759,6 +759,8 @@ async function handleDateInviteButton(interaction) {
           interaction.channel ??
           interaction.client.channels.cache.get(interaction.channelId) ??
           null,
+        webhookId: CLIENT_ID,
+        webhookToken: interaction.token,
         inviterId: pending.inviterId,
         inviteeId: pending.inviteeId,
       });
@@ -847,6 +849,8 @@ async function handleProposeButton(interaction) {
         interaction.channel ??
         interaction.client.channels.cache.get(interaction.channelId) ??
         null,
+      webhookId: CLIENT_ID,
+      webhookToken: interaction.token,
       partnerAId: pending.proposerId,
       partnerBId: pending.targetId,
     });
