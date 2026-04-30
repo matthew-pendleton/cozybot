@@ -69,7 +69,7 @@ function meterLine(score, icon = "🤍") {
 }
 
 function tildesNetLine(delta, total, icon = "🤍") {
-  return `\`${formatDelta(delta)}pts\` ${meterLine(total, icon)}`;
+  return `\`${formatDelta(delta)}pts\`\n${meterLine(total, icon)}`;
 }
 
 function formatLine(template, senderMention, targetMention) {
@@ -352,8 +352,7 @@ async function timeoutProposal(nonce, client) {
           "",
           meterLine(total, icon),
         ].join("\n")
-      )
-      .setFooter({ text: "💌 Timed out — no response." });
+      );
 
     if (pending.webhookId && pending.webhookToken) {
       await client.rest.patch(

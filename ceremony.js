@@ -39,26 +39,49 @@ function meterLine(score, icon) {
   return `\`${icon} ${relationshipMeter(score)}  ${score}/100\``;
 }
 
-async function rehydrateMessage(message, channelHint) {
-  if (message?.channel) return message;
-  if (channelHint?.messages?.fetch) {
-    return await channelHint.messages.fetch(message.id);
-  }
-
-  throw new Error(
-    `Ceremony: cannot rehydrate message ${message.id} (channel ${message.channelId} not cached/accessible).`
-  );
-}
-
 async function editInteractionMessage(client, webhookId, webhookToken, messageId, payload) {
   await client.rest.patch(Routes.webhookMessage(webhookId, webhookToken, messageId), {
     body: payload,
   });
 }
 
+function waitForRoleClick({ client, messageId, partnerAId, partnerBId, timeoutMs }) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error("timeout"));
+    }, timeoutMs);
+
+    function cleanup() {
+      clearTimeout(timer);
+      client.off("interactionCreate", onInteraction);
+    }
+
+    async function onInteraction(i) {
+      try {
+        if (!i.isButton()) return;
+        if (i.message?.id !== messageId) return;
+        if (!i.customId.startsWith("cozybot:ceremony:role:")) return;
+        if (i.user.id === partnerAId || i.user.id === partnerBId) {
+          await i.reply({
+            ephemeral: true,
+            content: "💌 The couple can’t claim ceremony roles. Nice try, though.",
+          });
+          return;
+        }
+        cleanup();
+        resolve(i);
+      } catch (err) {
+        cleanup();
+        reject(err);
+      }
+    }
+
+    client.on("interactionCreate", onInteraction);
+  });
+}
+
 async function runCeremony({ message, channel, webhookId, webhookToken, partnerAId, partnerBId }) {
-  // eslint-disable-next-line no-param-reassign
-  message = await rehydrateMessage(message, channel);
   const client = message.client;
   const messageId = message.id;
   const canUseWebhook = Boolean(webhookId && webhookToken);
@@ -107,13 +130,12 @@ async function runCeremony({ message, channel, webhookId, webhookToken, partnerA
 
     try {
       // eslint-disable-next-line no-await-in-loop
-      const btn = await message.awaitMessageComponent({
-        componentType: ComponentType.Button,
-        time: remaining,
-        filter: (i) =>
-          i.customId.startsWith("cozybot:ceremony:role:") &&
-          i.user.id !== partnerAId &&
-          i.user.id !== partnerBId,
+      const btn = await waitForRoleClick({
+        client,
+        messageId,
+        partnerAId,
+        partnerBId,
+        timeoutMs: remaining,
       });
 
       const role = btn.customId.split(":").at(-1);
