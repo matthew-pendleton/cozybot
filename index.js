@@ -753,11 +753,16 @@ async function handleDateInviteButton(interaction) {
       .setFooter({ text: "Settling in…" });
 
     await interaction.update({ embeds: [embed], components: [] });
-    await runDate({
-      message: interaction.message,
-      inviterId: pending.inviterId,
-      inviteeId: pending.inviteeId,
-    });
+    try {
+      await runDate({
+        message: interaction.message,
+        inviterId: pending.inviterId,
+        inviteeId: pending.inviteeId,
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Date flow failed:", err);
+    }
     return true;
   }
 
