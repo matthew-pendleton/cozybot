@@ -228,6 +228,23 @@ function relationshipBar(score) {
   return "█".repeat(filled) + "░".repeat(10 - filled);
 }
 
+function relationshipMeter(score, { width = 10, filledChar = "▰", emptyChar = "▱" } = {}) {
+  const clamped = Math.max(0, Math.min(100, Number(score)));
+  const filled = Math.round((clamped / 100) * width);
+  return filledChar.repeat(filled) + emptyChar.repeat(width - filled);
+}
+
+function relationshipStatusWidget(score, { icon = "🤍" } = {}) {
+  const meter = relationshipMeter(score);
+  return [
+    "💞 Relationship Status",
+    " ┌────────┐",
+    `${icon} ${meter}`,
+    " └────────┘",
+    `Score: ${Number(score)}`,
+  ].join("\n");
+}
+
 module.exports = {
   initDatabase,
   ensureUser,
@@ -254,6 +271,8 @@ module.exports = {
   listSpouses,
 
   relationshipBar,
+  relationshipMeter,
+  relationshipStatusWidget,
   DB_PATH,
 };
 

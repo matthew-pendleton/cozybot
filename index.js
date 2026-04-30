@@ -18,7 +18,8 @@ const {
   adjustRelationshipScore,
   getRelationshipScore,
   listSpouses,
-  relationshipBar,
+  relationshipMeter,
+  relationshipStatusWidget,
   canDate,
   canPropose,
   getMarriageCount,
@@ -56,6 +57,20 @@ function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function formatDelta(delta) {
+  if (delta > 0) return `+${delta}`;
+  if (delta < 0) return `${delta}`;
+  return "0";
+}
+
+function meterLine(score, icon = "🤍") {
+  return `${icon} ${relationshipMeter(score)}  ${score}/100`;
+}
+
+function tildesNetLine(delta, total, icon = "🤍") {
+  return `${meterLine(total, icon)}\n~ ${formatDelta(delta)}pts • ${total}/100 ~`;
+}
+
 function formatLine(template, senderMention, targetMention) {
   return template
     .replaceAll("{sender}", senderMention)
@@ -88,12 +103,27 @@ async function timeoutFlirt(nonce, client) {
     if (!channel || !channel.isTextBased()) return;
     const message = await channel.messages.fetch(pending.messageId);
 
-    const embed = EmbedBuilder.from(message.embeds?.[0] ?? null).setColor(COZY_COLOR);
-    embed.setFooter({ text: "💌 Timed out — no response." });
-    embed.addFields({
-      name: "Result",
-      value: pick(dialogue.flirtTimeout),
-    });
+    const senderMention = `<@${pending.senderId}>`;
+    const targetMention = `<@${pending.targetId}>`;
+    const intro = `💌 ${targetMention}, you’ve got a note…`;
+    const flirtLine =
+      pending.flirtLine ??
+      formatLine(pick(dialogue.flirtLines), senderMention, targetMention);
+    const responseLine = formatLine(
+      pick(dialogue.flirtTimeout),
+      senderMention,
+      targetMention
+    );
+    const total = getRelationshipScore(pending.senderId, pending.targetId);
+    const icon = findMarriageBetween(pending.senderId, pending.targetId) ? "💍" : "🤍";
+
+    const embed = new EmbedBuilder()
+      .setColor(COZY_COLOR)
+      .setTitle("🌹 Flirt")
+      .setDescription(
+        [intro, "", flirtLine, "", responseLine, "", tildesNetLine(0, total, icon)].join("\n")
+      )
+      .setFooter({ text: "💌 Timed out — no response." });
 
     await message.edit({ embeds: [embed], components: [] });
   } catch {
@@ -127,17 +157,27 @@ async function handleFlirtCommand(interaction) {
   const acceptId = makeFlirtCustomId("accept", nonce);
   const rejectId = makeFlirtCustomId("reject", nonce);
 
+  const senderMention = `<@${sender.id}>`;
+  const targetMention = `<@${target.id}>`;
+  const intro = `💌 ${targetMention}, you’ve got a note…`;
+  const flirtLine = formatLine(pick(dialogue.flirtLines), senderMention, targetMention);
+  const total = getRelationshipScore(sender.id, target.id);
+  const icon = findMarriageBetween(sender.id, target.id) ? "💍" : "🤍";
+
   const embed = new EmbedBuilder()
     .setColor(COZY_COLOR)
-    .setTitle("🌹 A cozy flirt appears")
+    .setTitle("🌹 Flirt")
     .setDescription(
-      formatLine(pick(dialogue.flirtLines), `<@${sender.id}>`, `<@${target.id}>`)
+      [
+        intro,
+        "",
+        flirtLine,
+        "",
+        "💌 What do you think?",
+        "",
+        tildesNetLine(0, total, icon),
+      ].join("\n")
     )
-    .addFields({
-      name: "🌡 Current relationship score",
-      value: `${getRelationshipScore(sender.id, target.id)}/100`,
-      inline: true,
-    })
     .setFooter({ text: "Target has 60 seconds to respond." });
 
   const row = new ActionRowBuilder().addComponents(
@@ -165,6 +205,7 @@ async function handleFlirtCommand(interaction) {
     channelId: interaction.channelId,
     messageId: message.id,
     createdAt: Date.now(),
+    flirtLine,
     timeoutHandle: setTimeout(() => timeoutFlirt(nonce, interaction.client), 60_000),
   });
 }
@@ -554,12 +595,13 @@ async function handleStatusCommand(interaction) {
     }
 
     const score = getRelationshipScore(user1.id, user2.id);
-    const bar = relationshipBar(score);
+    const married = Boolean(findMarriageBetween(user1.id, user2.id));
+    const icon = married ? "💍" : "🤍";
 
     const embed = new EmbedBuilder()
       .setColor(COZY_COLOR)
-      .setTitle("🌡 Relationship Status")
-      .setDescription(`${bar}  ${score}/100`)
+      .setTitle("💞 Relationship Status")
+      .setDescription(relationshipStatusWidget(score, { icon }))
       .addFields({
         name: "Pair",
         value: `<@${user1.id}> + <@${user2.id}>`,
@@ -630,35 +672,62 @@ async function handleFlirtButton(interaction) {
   const senderMention = `<@${pending.senderId}>`;
   const targetMention = `<@${pending.targetId}>`;
 
-  const embed = new EmbedBuilder()
-    .setColor(COZY_COLOR)
-    .setTitle("🌹 A cozy flirt appears");
+  const intro = `💌 ${targetMention}, you’ve got a note…`;
+  const flirtLine =
+    pending.flirtLine ??
+    formatLine(pick(dialogue.flirtLines), senderMention, targetMention);
+  const icon = findMarriageBetween(pending.senderId, pending.targetId) ? "💍" : "🤍";
 
   if (action === "accept") {
-    const delta = randInt(12, 18);
+    const delta = randInt(18, 32);
     const res = adjustRelationshipScore(pending.senderId, pending.targetId, delta);
-    embed.setDescription(`${senderMention} → ${targetMention}`);
-    embed.addFields(
-      { name: "Result", value: formatLine(pick(dialogue.flirtAccepted), senderMention, targetMention) },
-      {
-        name: "🌡 Relationship score",
-        value: `${res.after}/100  (**+${res.delta}**)`,
-      }
+    const responseLine = formatLine(
+      pick(dialogue.flirtAccepted),
+      senderMention,
+      targetMention
     );
+    const embed = new EmbedBuilder()
+      .setColor(COZY_COLOR)
+      .setTitle("🌹 Flirt")
+      .setDescription(
+        [
+          intro,
+          "",
+          flirtLine,
+          "",
+          responseLine,
+          "",
+          tildesNetLine(res.delta, res.after, icon),
+        ].join("\n")
+      )
+      .setFooter({ text: "💌 Response received." });
     await interaction.update({ embeds: [embed], components: [] });
     return true;
   }
 
   if (action === "reject") {
-    const res = adjustRelationshipScore(pending.senderId, pending.targetId, -5);
-    embed.setDescription(`${senderMention} → ${targetMention}`);
-    embed.addFields(
-      { name: "Result", value: formatLine(pick(dialogue.flirtRejected), senderMention, targetMention) },
-      {
-        name: "🌡 Relationship score",
-        value: `${res.after}/100  (**${res.delta}**)`,
-      }
+    const delta = randInt(8, 16) * -1;
+    const res = adjustRelationshipScore(pending.senderId, pending.targetId, delta);
+    const responseLine = formatLine(
+      pick(dialogue.flirtRejected),
+      senderMention,
+      targetMention
     );
+    const embed = new EmbedBuilder()
+      .setColor(COZY_COLOR)
+      .setTitle("🌹 Flirt")
+      .setDescription(
+        [
+          intro,
+          "",
+          flirtLine,
+          "",
+          responseLine,
+          "",
+          tildesNetLine(res.delta, res.after, icon),
+        ].join("\n")
+      )
+      .setFooter({ text: "💌 Response received." });
     await interaction.update({ embeds: [embed], components: [] });
     return true;
   }
