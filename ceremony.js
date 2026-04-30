@@ -200,7 +200,7 @@ async function runCeremony({ message, channel, webhookId, webhookToken, partnerA
       [
         `${mention(partnerAId)} and ${mention(partnerBId)} are now married.`,
         "",
-        `~ ${formatDelta(res.delta)}pts • ${res.after}/100 ~`,
+        `\`${formatDelta(res.delta)}pts\``,
         meterLine(res.after, icon),
       ].join("\n")
     )

@@ -238,12 +238,8 @@ function relationshipMeter(score, { width = 10, filledChar = "▰", emptyChar = 
 
 function relationshipStatusWidget(score, { icon = "🤍" } = {}) {
   const meter = relationshipMeter(score);
-  return [
-    " ┌────────┐",
-    `${icon} ${meter}  ${Number(score)}/100`,
-    " └────────┘",
-    `Score: ${Number(score)}`,
-  ].join("\n");
+  const clamped = clampScore(Number(score));
+  return `${icon} ${meter} ${clamped}/100`;
 }
 
 module.exports = {

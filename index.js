@@ -69,7 +69,7 @@ function meterLine(score, icon = "🤍") {
 }
 
 function tildesNetLine(delta, total, icon = "🤍") {
-  return `~ ${formatDelta(delta)}pts • ${total}/100 ~\n${meterLine(total, icon)}`;
+  return `\`${formatDelta(delta)}pts\` ${meterLine(total, icon)}`;
 }
 
 function formatLine(template, senderMention, targetMention) {
@@ -100,10 +100,6 @@ async function timeoutFlirt(nonce, client) {
   pendingFlirts.delete(nonce);
 
   try {
-    const channel = await client.channels.fetch(pending.channelId);
-    if (!channel || !channel.isTextBased()) return;
-    const message = await channel.messages.fetch(pending.messageId);
-
     const senderMention = `<@${pending.senderId}>`;
     const targetMention = `<@${pending.targetId}>`;
     const intro = `💌 ${targetMention}, you’ve got a note…`;
@@ -119,6 +115,18 @@ async function timeoutFlirt(nonce, client) {
     const icon = findMarriageBetween(pending.senderId, pending.targetId) ? "💍" : "🤍";
 
     const content = `${intro} ${flirtLine} ${responseLine} ${tildesNetLine(0, total, icon)}`;
+
+    if (pending.webhookId && pending.webhookToken) {
+      await client.rest.patch(
+        Routes.webhookMessage(pending.webhookId, pending.webhookToken, pending.messageId),
+        { body: { content, embeds: [], components: [] } }
+      );
+      return;
+    }
+
+    const channel = await client.channels.fetch(pending.channelId);
+    if (!channel || !channel.isTextBased()) return;
+    const message = await channel.messages.fetch(pending.messageId);
     await message.edit({ content, embeds: [], components: [] });
   } catch {
     // Best-effort timeout cleanup.
@@ -186,6 +194,8 @@ async function handleFlirtCommand(interaction) {
     messageId: message.id,
     createdAt: Date.now(),
     flirtLine,
+    webhookId: CLIENT_ID,
+    webhookToken: interaction.token,
     timeoutHandle: setTimeout(() => timeoutFlirt(nonce, interaction.client), 60_000),
   });
 }
@@ -326,10 +336,6 @@ async function timeoutProposal(nonce, client) {
   pendingProposals.delete(nonce);
 
   try {
-    const channel = await client.channels.fetch(pending.channelId);
-    if (!channel || !channel.isTextBased()) return;
-    const message = await channel.messages.fetch(pending.messageId);
-
     const proposerMention = `<@${pending.proposerId}>`;
     const targetMention = `<@${pending.targetId}>`;
     const total = getRelationshipScore(pending.proposerId, pending.targetId);
@@ -348,6 +354,18 @@ async function timeoutProposal(nonce, client) {
         ].join("\n")
       )
       .setFooter({ text: "💌 Timed out — no response." });
+
+    if (pending.webhookId && pending.webhookToken) {
+      await client.rest.patch(
+        Routes.webhookMessage(pending.webhookId, pending.webhookToken, pending.messageId),
+        { body: { embeds: [embed.toJSON()], components: [] } }
+      );
+      return;
+    }
+
+    const channel = await client.channels.fetch(pending.channelId);
+    if (!channel || !channel.isTextBased()) return;
+    const message = await channel.messages.fetch(pending.messageId);
     await message.edit({ embeds: [embed], components: [] });
   } catch {
     // Best-effort timeout cleanup.
@@ -436,6 +454,8 @@ async function handleProposeCommand(interaction) {
     channelId: interaction.channelId,
     messageId: message.id,
     createdAt: Date.now(),
+    webhookId: CLIENT_ID,
+    webhookToken: interaction.token,
     timeoutHandle: setTimeout(() => timeoutProposal(nonce, interaction.client), 60_000),
   });
 }
@@ -587,15 +607,16 @@ async function handleStatusCommand(interaction) {
     const married = Boolean(findMarriageBetween(user1.id, user2.id));
     const icon = married ? "💍" : "🤍";
 
-    const member1 = interaction.options.getMember("user");
-    const member2 = interaction.options.getMember("user2");
-    const name1 = member1?.displayName ?? user1.globalName ?? user1.username;
-    const name2 = member2?.displayName ?? user2.globalName ?? user2.username;
-
     const embed = new EmbedBuilder()
       .setColor(COZY_COLOR)
       .setTitle("💞 Relationship Status")
-      .setDescription([`**${name1}** + **${name2}**`, "", relationshipStatusWidget(score, { icon })].join("\n"))
+      .setDescription(
+        [
+          `**<@${user1.id}>** + **<@${user2.id}>**`,
+          "",
+          relationshipStatusWidget(score, { icon }),
+        ].join("\n")
+      )
       .setFooter({ text: pick(dialogue.statusQuips) });
 
     await interaction.reply({
