@@ -38,7 +38,19 @@ function meterLine(score, icon) {
   return `\`${icon} ${relationshipMeter(score)}  ${score}/100\``;
 }
 
+async function rehydrateMessage(message) {
+  if (message?.channel) return message;
+  const channel = await message.client.channels.fetch(message.channelId);
+  if (!channel || !channel.isTextBased()) {
+    throw new Error(`Ceremony: channel ${message.channelId} is not text-based or missing.`);
+  }
+  return await channel.messages.fetch(message.id);
+}
+
 async function runCeremony({ message, partnerAId, partnerBId }) {
+  // eslint-disable-next-line no-param-reassign
+  message = await rehydrateMessage(message);
+
   const state = {
     officiantId: null,
     flowerGirlId: null,

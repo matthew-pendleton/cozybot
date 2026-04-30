@@ -719,21 +719,19 @@ async function handleDateInviteButton(interaction) {
 
   if (action === "decline") {
     const icon = findMarriageBetween(pending.inviterId, pending.inviteeId) ? "💍" : "🤍";
-    const total = getRelationshipScore(pending.inviterId, pending.inviteeId);
-    const embed = new EmbedBuilder()
-      .setColor(COZY_COLOR)
-      .setTitle("💐 Date Invite")
-      .setDescription(
-        [
-          formatLine(pick(dialogue.dateInvites), inviterMention, inviteeMention),
-          "",
-          formatLine(pick(dialogue.dateDeclined), inviterMention, inviteeMention),
-          "",
-          tildesNetLine(0, total, icon),
-        ].join("\n")
-      );
+    const delta = randInt(6, 14) * -1;
+    const res = adjustRelationshipScore(pending.inviterId, pending.inviteeId, delta);
 
-    await interaction.update({ embeds: [embed], components: [] });
+    const inviteLine = formatLine(pick(dialogue.dateInvites), inviterMention, inviteeMention);
+    const declineLine = formatLine(pick(dialogue.dateDeclined), inviterMention, inviteeMention);
+
+    const content = `💐 ${inviteLine} ${declineLine} \`(${delta}pts)\` ${tildesNetLine(
+      res.delta,
+      res.after,
+      icon
+    )}`;
+
+    await interaction.update({ content, embeds: [], components: [] });
     return true;
   }
 
