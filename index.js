@@ -18,6 +18,7 @@ const {
   ensureUser,
   adjustRelationshipScore,
   getRelationshipScore,
+  setRelationshipScore,
   listSpouses,
   relationshipMeter,
   relationshipStatusWidget,
@@ -499,13 +500,15 @@ async function handleDivorceCommand(interaction) {
     return;
   }
 
-  const res = adjustRelationshipScore(sender.id, target.id, -20);
+  const before = getRelationshipScore(sender.id, target.id);
+  const after = setRelationshipScore(sender.id, target.id, 0);
+  const delta = after - before;
   const senderMention = `<@${sender.id}>`;
   const targetMention = `<@${target.id}>`;
   const icon = findMarriageBetween(sender.id, target.id) ? "💍" : "🤍";
 
   await interaction.reply({
-    content: `${formatLine(pick(dialogue.divorceLines), senderMention, targetMention)} ${tildesNetLine(res.delta, res.after, icon)}`,
+    content: `${formatLine(pick(dialogue.divorceLines), senderMention, targetMention)} \`reset to 0\` ${tildesNetLine(delta, after, icon)}`,
     allowedMentions: { users: [sender.id, target.id] },
   });
 }
