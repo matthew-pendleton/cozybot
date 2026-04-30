@@ -41,15 +41,15 @@ function sleep(ms) {
 
 async function rehydrateMessage(message, channelHint) {
   if (message?.channel) return message;
-  const channel = channelHint && channelHint.isTextBased?.() ? channelHint : null;
-  if (channel) return await channel.messages.fetch(message.id);
-
-  // Fallback (may fail with Missing Access in some setups)
-  const fetched = await message.client.channels.fetch(message.channelId);
-  if (!fetched || !fetched.isTextBased()) {
-    throw new Error(`Date: channel ${message.channelId} is not text-based or missing.`);
+  if (channelHint?.messages?.fetch) {
+    return await channelHint.messages.fetch(message.id);
   }
-  return await fetched.messages.fetch(message.id);
+
+  // No REST channel fetch here: if we can't rehydrate from cache/partial,
+  // let the caller see a clear error (REST fetch can 403 in some setups).
+  throw new Error(
+    `Date: cannot rehydrate message ${message.id} (channel ${message.channelId} not cached/accessible).`
+  );
 }
 
 async function runDate({ message, channel, inviterId, inviteeId }) {

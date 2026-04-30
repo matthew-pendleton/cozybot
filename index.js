@@ -755,7 +755,10 @@ async function handleDateInviteButton(interaction) {
     try {
       await runDate({
         message: interaction.message,
-        channel: interaction.channel,
+        channel:
+          interaction.channel ??
+          interaction.client.channels.cache.get(interaction.channelId) ??
+          null,
         inviterId: pending.inviterId,
         inviteeId: pending.inviteeId,
       });
@@ -840,7 +843,10 @@ async function handleProposeButton(interaction) {
     await interaction.update({ embeds: [embed], components: [] });
     await runCeremony({
       message: interaction.message,
-      channel: interaction.channel,
+      channel:
+        interaction.channel ??
+        interaction.client.channels.cache.get(interaction.channelId) ??
+        null,
       partnerAId: pending.proposerId,
       partnerBId: pending.targetId,
     });

@@ -40,14 +40,13 @@ function meterLine(score, icon) {
 
 async function rehydrateMessage(message, channelHint) {
   if (message?.channel) return message;
-  const channel = channelHint && channelHint.isTextBased?.() ? channelHint : null;
-  if (channel) return await channel.messages.fetch(message.id);
-
-  const fetched = await message.client.channels.fetch(message.channelId);
-  if (!fetched || !fetched.isTextBased()) {
-    throw new Error(`Ceremony: channel ${message.channelId} is not text-based or missing.`);
+  if (channelHint?.messages?.fetch) {
+    return await channelHint.messages.fetch(message.id);
   }
-  return await fetched.messages.fetch(message.id);
+
+  throw new Error(
+    `Ceremony: cannot rehydrate message ${message.id} (channel ${message.channelId} not cached/accessible).`
+  );
 }
 
 async function runCeremony({ message, channel, partnerAId, partnerBId }) {
