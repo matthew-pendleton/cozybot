@@ -36,6 +36,12 @@ function rollPts([min, max], sign = 1) {
   return randInt(min, max) * sign;
 }
 
+function fmtPts(delta) {
+  if (delta > 0) return `+${delta}`;
+  if (delta < 0) return `${delta}`;
+  return "0";
+}
+
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -102,11 +108,11 @@ async function runDate({ message, channel, webhookId, webhookToken, inviterId, i
     function makeEmbed() {
       return new EmbedBuilder()
         .setColor(COZY_COLOR)
-        .setTitle("💐 Date Night")
+        .setTitle(`💐 Date Night! ${inviterMention} + ${inviteeMention}`)
         .setDescription(beats.join("\n"));
     }
 
-    beats.push(pick(dialogue.dateOpening));
+    beats.push(`→ ${pick(dialogue.dateOpening)}`);
     await doEdit({
       embeds: [makeEmbed().toJSON()],
       components: [],
@@ -121,7 +127,7 @@ async function runDate({ message, channel, webhookId, webhookToken, inviterId, i
         const res = adjustRelationshipScore(inviterId, inviteeId, pts);
         netDelta += res.delta;
         beats.push(
-          `**Round ${round}:** ${pick(dialogue.dateMiddle_positive)}  \`(+${pts}pts)\`  ${icon} ${relationshipMeter(res.after)}  ${res.after}/100`
+          `→ ${pick(dialogue.dateMiddle_positive)} **${fmtPts(pts)}pts**`
         );
       } else {
         negativeRounds += 1;
@@ -129,7 +135,7 @@ async function runDate({ message, channel, webhookId, webhookToken, inviterId, i
         const res = adjustRelationshipScore(inviterId, inviteeId, pts);
         netDelta += res.delta;
         beats.push(
-          `**Round ${round}:** ${pick(dialogue.dateMiddle_negative)}  \`(${pts}pts)\`  ${icon} ${relationshipMeter(res.after)}  ${res.after}/100`
+          `→ ${pick(dialogue.dateMiddle_negative)} **${fmtPts(pts)}pts**`
         );
       }
 
@@ -148,7 +154,7 @@ async function runDate({ message, channel, webhookId, webhookToken, inviterId, i
           : netDelta >= 0
             ? pick(dialogue.dateClosing_positive)
             : pick(dialogue.dateClosing_negative);
-    beats.push(`\n${closing}`);
+    beats.push(`→ ${closing}`);
     await doEdit({
       embeds: [makeEmbed().toJSON()],
       components: [],
@@ -197,26 +203,23 @@ async function runDate({ message, channel, webhookId, webhookToken, inviterId, i
       const res = adjustRelationshipScore(inviterId, inviteeId, pts);
       netDelta += res.delta;
       beats.push(
-        `\n${pick(dialogue.dateKiss)}  \`(+${pts}pts)\`  ${icon} ${relationshipMeter(res.after)}  ${res.after}/100`
+        `\n> ${pick(dialogue.dateKiss)} **${fmtPts(pts)}pts**`
       );
     } else {
       if (kissTimedOut) {
-        const totalBefore = getRelationshipScore(inviterId, inviteeId);
-        beats.push(
-          `\n${pick(dialogue.dateNoKiss)}  \`(+0pts)\`  ${icon} ${relationshipMeter(totalBefore)}  ${totalBefore}/100`
-        );
+        // No line for no-kiss timeout (neutral), per style.
       } else {
         const pts = rollPts(DATE_MOVES.kissNo.pts, -1);
         const res = adjustRelationshipScore(inviterId, inviteeId, pts);
         netDelta += res.delta;
-        beats.push(
-          `\n${pick(dialogue.dateNoKiss)}  \`(${pts}pts)\`  ${icon} ${relationshipMeter(res.after)}  ${res.after}/100`
-        );
+        // No line for "No Kiss" choice; the penalty is reflected in net XP.
       }
     }
 
     const total = getRelationshipScore(inviterId, inviteeId);
-    beats.push(`\n~ ${netDelta >= 0 ? `+${netDelta}` : `${netDelta}`}pts • ${total}/100 ~`);
+    beats.push(
+      `\n~ ${netDelta >= 0 ? `+${netDelta}` : `${netDelta}`}pts • ${total}/100 ~\n\`${icon} ${relationshipMeter(total)}  ${total}/100\``
+    );
     const finalEmbed = makeEmbed()
       .setFooter({ text: "Date complete." })
       .addFields({
