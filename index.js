@@ -342,9 +342,9 @@ async function timeoutProposal(nonce, client) {
         [
           formatLine(pick(dialogue.proposeLines), proposerMention, targetMention),
           "",
-          "💌 Oof. Left them on read. In front of everyone.",
+          "💌 No response. The proposal lingers… then gently fizzles.",
           "",
-          tildesNetLine(0, total, icon),
+          meterLine(total, icon),
         ].join("\n")
       )
       .setFooter({ text: "💌 Timed out — no response." });
@@ -587,15 +587,15 @@ async function handleStatusCommand(interaction) {
     const married = Boolean(findMarriageBetween(user1.id, user2.id));
     const icon = married ? "💍" : "🤍";
 
+    const member1 = interaction.options.getMember("user");
+    const member2 = interaction.options.getMember("user2");
+    const name1 = member1?.displayName ?? user1.globalName ?? user1.username;
+    const name2 = member2?.displayName ?? user2.globalName ?? user2.username;
+
     const embed = new EmbedBuilder()
       .setColor(COZY_COLOR)
-      .setTitle(`💞 <@${user1.id}> + <@${user2.id}>`)
-      .setDescription(
-        [
-          relationshipStatusWidget(score, { icon }),
-          `${icon} ${relationshipMeter(score)}  ${score}/100`,
-        ].join("\n")
-      )
+      .setTitle("💞 Relationship Status")
+      .setDescription([`**${name1}** + **${name2}**`, "", relationshipStatusWidget(score, { icon })].join("\n"))
       .setFooter({ text: pick(dialogue.statusQuips) });
 
     await interaction.reply({
@@ -827,7 +827,8 @@ async function handleProposeButton(interaction) {
           "",
           formatLine(pick(dialogue.proposeRejected), proposerMention, targetMention),
           "",
-          tildesNetLine(res.delta, res.after, icon),
+          `\`${formatDelta(res.delta)}pts\``,
+          meterLine(res.after, icon),
         ].join("\n")
       );
     await interaction.update({ embeds: [embed], components: [] });

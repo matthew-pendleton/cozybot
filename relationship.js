@@ -240,7 +240,7 @@ function relationshipStatusWidget(score, { icon = "🤍" } = {}) {
   const meter = relationshipMeter(score);
   return [
     " ┌────────┐",
-    `${icon} ${meter}`,
+    `${icon} ${meter}  ${Number(score)}/100`,
     " └────────┘",
     `Score: ${Number(score)}`,
   ].join("\n");
