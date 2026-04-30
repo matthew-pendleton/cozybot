@@ -264,6 +264,15 @@ async function handleDateCommand(interaction) {
   const inviteeMention = `<@${invitee.id}>`;
   const icon = findMarriageBetween(inviter.id, invitee.id) ? "💍" : "🤍";
   const total = getRelationshipScore(inviter.id, invitee.id);
+  const inviterDisplay =
+    interaction.member?.displayName ??
+    inviter.globalName ??
+    inviter.username;
+  const inviteeMember = interaction.options.getMember("user");
+  const inviteeDisplay =
+    inviteeMember?.displayName ??
+    invitee.globalName ??
+    invitee.username;
 
   const embed = new EmbedBuilder()
     .setColor(COZY_COLOR)
@@ -299,6 +308,8 @@ async function handleDateCommand(interaction) {
     nonce,
     inviterId: inviter.id,
     inviteeId: invitee.id,
+    inviterDisplay,
+    inviteeDisplay,
     channelId: interaction.channelId,
     messageId: message.id,
     createdAt: Date.now(),
@@ -755,9 +766,12 @@ async function handleDateInviteButton(interaction) {
         webhookId: CLIENT_ID,
         webhookToken: interaction.token,
         inviterId: pending.inviterId,
-        inviterName: interaction.message.interaction?.user?.username ?? null,
+        inviterName: pending.inviterDisplay ?? null,
         inviteeId: pending.inviteeId,
-        inviteeName: interaction.user.username,
+        inviteeName:
+          interaction.member?.displayName ??
+          interaction.user.globalName ??
+          interaction.user.username,
       });
     } catch (err) {
       // eslint-disable-next-line no-console

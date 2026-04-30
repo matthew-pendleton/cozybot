@@ -42,10 +42,10 @@ function fmtPts(delta) {
   return "0";
 }
 
-function formatLine(template, senderMention, targetMention) {
+function formatLine(template, senderLabel, targetLabel) {
   return template
-    .replaceAll("{sender}", senderMention)
-    .replaceAll("{target}", targetMention);
+    .replaceAll("{sender}", senderLabel)
+    .replaceAll("{target}", targetLabel);
 }
 
 function sleep(ms) {
@@ -78,8 +78,14 @@ function waitForButton({ client, messageId, userId, allowedCustomIds, timeoutMs 
       try {
         if (!i.isButton()) return;
         if (i.message?.id !== messageId) return;
-        if (userId && i.user.id !== userId) return;
         if (allowedCustomIds && !allowedCustomIds.includes(i.customId)) return;
+        if (userId && i.user.id !== userId) {
+          await i.reply({
+            ephemeral: true,
+            content: "💌 Uh… you’re not on this date. Go kiss somebody else.",
+          });
+          return;
+        }
         cleanup();
         resolve(i);
       } catch (err) {
@@ -117,6 +123,8 @@ async function runDate({
     let currentScore = getRelationshipScore(inviterId, inviteeId);
     const titleLeft = inviterName || inviterMention;
     const titleRight = inviteeName || inviteeMention;
+  const senderBold = `**${titleLeft}**`;
+  const targetBold = `**${titleRight}**`;
 
     const beats = [];
     let netDelta = 0;
@@ -124,7 +132,8 @@ async function runDate({
     let negativeRounds = 0;
 
     function statusLine() {
-      return `\`${icon} ${relationshipMeter(currentScore)}  ${currentScore}/100\``;
+      const safeScore = Number.isFinite(currentScore) ? currentScore : 0;
+      return `\`${icon} ${relationshipMeter(safeScore)}  ${safeScore}/100\``;
     }
 
     function makeEmbed() {
@@ -134,7 +143,13 @@ async function runDate({
         .setDescription(`${beats.join("\n")}\n\n${statusLine()}`);
     }
 
-    beats.push(`→ ${formatLine(pick(dialogue.dateOpening), inviterMention, inviteeMention)}`);
+  beats.push(
+    `*${senderBold} invited **${inviteeMention}** on a date.*\n${formatLine(
+      pick(dialogue.dateOpening),
+      senderBold,
+      targetBold
+    )}`
+  );
     await doEdit({
       embeds: [makeEmbed().toJSON()],
       components: [],
@@ -150,7 +165,7 @@ async function runDate({
         netDelta += res.delta;
         currentScore = res.after;
         beats.push(
-          `→ ${formatLine(pick(dialogue.dateMiddle_positive), inviterMention, inviteeMention)} \`~ ${fmtPts(pts)}pts ~\``
+        `→ ${formatLine(pick(dialogue.dateMiddle_positive), senderBold, targetBold)} **${fmtPts(pts)}pts**`
         );
       } else {
         negativeRounds += 1;
@@ -159,7 +174,7 @@ async function runDate({
         netDelta += res.delta;
         currentScore = res.after;
         beats.push(
-          `→ ${formatLine(pick(dialogue.dateMiddle_negative), inviterMention, inviteeMention)} \`~ ${fmtPts(pts)}pts ~\``
+        `→ ${formatLine(pick(dialogue.dateMiddle_negative), senderBold, targetBold)} **${fmtPts(pts)}pts**`
         );
       }
 
@@ -178,7 +193,7 @@ async function runDate({
           : netDelta >= 0
             ? pick(dialogue.dateClosing_positive)
             : pick(dialogue.dateClosing_negative);
-    beats.push(`→ ${formatLine(closing, inviterMention, inviteeMention)}`);
+    beats.push(`→ ${formatLine(closing, senderBold, targetBold)}`);
     await doEdit({
       embeds: [makeEmbed().toJSON()],
       components: [],
@@ -228,7 +243,7 @@ async function runDate({
       netDelta += res.delta;
       currentScore = res.after;
       beats.push(
-        `\n> ${formatLine(pick(dialogue.dateKiss), inviterMention, inviteeMention)} \`~ ${fmtPts(pts)}pts ~\``
+        `\n> ${formatLine(pick(dialogue.dateKiss), senderBold, targetBold)} **${fmtPts(pts)}pts**`
       );
     } else {
       if (kissTimedOut) {
