@@ -64,11 +64,11 @@ function formatDelta(delta) {
 }
 
 function meterLine(score, icon = "🤍") {
-  return `${icon} ${relationshipMeter(score)}  ${score}/100`;
+  return `\`${icon} ${relationshipMeter(score)}  ${score}/100\``;
 }
 
 function tildesNetLine(delta, total, icon = "🤍") {
-  return `${meterLine(total, icon)}\n~ ${formatDelta(delta)}pts • ${total}/100 ~`;
+  return `~ ${formatDelta(delta)}pts • ${total}/100 ~\n${meterLine(total, icon)}`;
 }
 
 function formatLine(template, senderMention, targetMention) {
@@ -220,16 +220,24 @@ async function timeoutDateInvite(nonce, client) {
     if (!channel || !channel.isTextBased()) return;
     const message = await channel.messages.fetch(pending.messageId);
 
-    const embed = EmbedBuilder.from(message.embeds?.[0] ?? null).setColor(COZY_COLOR);
-    embed.setFooter({ text: "💌 Timed out — no response." });
-    embed.addFields({
-      name: "Result",
-      value: formatLine(
-        pick(dialogue.dateDeclined),
-        `<@${pending.inviterId}>`,
-        `<@${pending.inviteeId}>`
-      ),
-    });
+    const inviterMention = `<@${pending.inviterId}>`;
+    const inviteeMention = `<@${pending.inviteeId}>`;
+    const icon = findMarriageBetween(pending.inviterId, pending.inviteeId) ? "💍" : "🤍";
+    const total = getRelationshipScore(pending.inviterId, pending.inviteeId);
+
+    const embed = new EmbedBuilder()
+      .setColor(COZY_COLOR)
+      .setTitle("💐 Date Invite")
+      .setDescription(
+        [
+          formatLine(pick(dialogue.dateInvites), inviterMention, inviteeMention),
+          "",
+          formatLine(pick(dialogue.dateDeclined), inviterMention, inviteeMention),
+          "",
+          tildesNetLine(0, total, icon),
+        ].join("\n")
+      )
+      .setFooter({ text: "💌 Timed out — no response." });
 
     await message.edit({ embeds: [embed], components: [] });
   } catch {
@@ -274,11 +282,19 @@ async function handleDateCommand(interaction) {
 
   const inviterMention = `<@${inviter.id}>`;
   const inviteeMention = `<@${invitee.id}>`;
+  const icon = findMarriageBetween(inviter.id, invitee.id) ? "💍" : "🤍";
+  const total = getRelationshipScore(inviter.id, invitee.id);
 
   const embed = new EmbedBuilder()
     .setColor(COZY_COLOR)
     .setTitle("💐 Date Invite")
-    .setDescription(formatLine(pick(dialogue.dateInvites), inviterMention, inviteeMention))
+    .setDescription(
+      [
+        formatLine(pick(dialogue.dateInvites), inviterMention, inviteeMention),
+        "",
+        tildesNetLine(0, total, icon),
+      ].join("\n")
+    )
     .setFooter({ text: "Invitee has 60 seconds to respond." });
 
   const row = new ActionRowBuilder().addComponents(
@@ -323,12 +339,24 @@ async function timeoutProposal(nonce, client) {
     if (!channel || !channel.isTextBased()) return;
     const message = await channel.messages.fetch(pending.messageId);
 
-    const embed = EmbedBuilder.from(message.embeds?.[0] ?? null).setColor(COZY_COLOR);
-    embed.setFooter({ text: "💌 Timed out — no response." });
-    embed.addFields({
-      name: "Result",
-      value: "💌 Oof. Left them on read. In front of everyone.",
-    });
+    const proposerMention = `<@${pending.proposerId}>`;
+    const targetMention = `<@${pending.targetId}>`;
+    const total = getRelationshipScore(pending.proposerId, pending.targetId);
+    const icon = findMarriageBetween(pending.proposerId, pending.targetId) ? "💍" : "🤍";
+
+    const embed = new EmbedBuilder()
+      .setColor(COZY_COLOR)
+      .setTitle("💍 A Proposal")
+      .setDescription(
+        [
+          formatLine(pick(dialogue.proposeLines), proposerMention, targetMention),
+          "",
+          "💌 Oof. Left them on read. In front of everyone.",
+          "",
+          tildesNetLine(0, total, icon),
+        ].join("\n")
+      )
+      .setFooter({ text: "💌 Timed out — no response." });
     await message.edit({ embeds: [embed], components: [] });
   } catch {
     // Best-effort timeout cleanup.
@@ -464,20 +492,17 @@ async function handleDivorceCommand(interaction) {
   const res = adjustRelationshipScore(sender.id, target.id, -20);
   const senderMention = `<@${sender.id}>`;
   const targetMention = `<@${target.id}>`;
+  const icon = findMarriageBetween(sender.id, target.id) ? "💍" : "🤍";
 
   const embed = new EmbedBuilder()
     .setColor(COZY_COLOR)
     .setTitle("🕯 Divorce")
-    .setDescription(formatLine(pick(dialogue.divorceLines), senderMention, targetMention))
-    .addFields(
-      {
-        name: "Pair",
-        value: `${senderMention} + ${targetMention}`,
-      },
-      {
-        name: "🌡 Relationship score",
-        value: `${res.after}/100  (**${res.delta}**)`,
-      }
+    .setDescription(
+      [
+        formatLine(pick(dialogue.divorceLines), senderMention, targetMention),
+        "",
+        tildesNetLine(res.delta, res.after, icon),
+      ].join("\n")
     );
 
   await interaction.reply({
@@ -517,11 +542,13 @@ async function handleComplimentCommand(interaction) {
   const embed = new EmbedBuilder()
     .setColor(COZY_COLOR)
     .setTitle("💌 A compliment")
-    .setDescription(formatLine(pick(dialogue.complimentLines), senderMention, targetMention))
-    .addFields({
-      name: "🌡 Relationship score",
-      value: `${res.after}/100  (**+${res.delta}**)`,
-    });
+    .setDescription(
+      [
+        formatLine(pick(dialogue.complimentLines), senderMention, targetMention),
+        "",
+        tildesNetLine(res.delta, res.after, findMarriageBetween(sender.id, target.id) ? "💍" : "🤍"),
+      ].join("\n")
+    );
 
   await interaction.reply({
     embeds: [embed],
@@ -560,11 +587,13 @@ async function handleInsultCommand(interaction) {
   const embed = new EmbedBuilder()
     .setColor(COZY_COLOR)
     .setTitle("🕯 An insult, tossed like a match")
-    .setDescription(formatLine(pick(dialogue.insultLines), senderMention, targetMention))
-    .addFields({
-      name: "🌡 Relationship score",
-      value: `${res.after}/100  (**${res.delta}**)`,
-    });
+    .setDescription(
+      [
+        formatLine(pick(dialogue.insultLines), senderMention, targetMention),
+        "",
+        tildesNetLine(res.delta, res.after, findMarriageBetween(sender.id, target.id) ? "💍" : "🤍"),
+      ].join("\n")
+    );
 
   await interaction.reply({
     embeds: [embed],
@@ -600,12 +629,13 @@ async function handleStatusCommand(interaction) {
 
     const embed = new EmbedBuilder()
       .setColor(COZY_COLOR)
-      .setTitle("💞 Relationship Status")
-      .setDescription(relationshipStatusWidget(score, { icon }))
-      .addFields({
-        name: "Pair",
-        value: `<@${user1.id}> + <@${user2.id}>`,
-      })
+      .setTitle(`💞 <@${user1.id}> + <@${user2.id}>`)
+      .setDescription(
+        [
+          relationshipStatusWidget(score, { icon }),
+          `${icon} ${relationshipMeter(score)}  ${score}/100`,
+        ].join("\n")
+      )
       .setFooter({ text: pick(dialogue.statusQuips) });
 
     await interaction.reply({
@@ -768,23 +798,38 @@ async function handleDateInviteButton(interaction) {
   const inviteeMention = `<@${pending.inviteeId}>`;
 
   if (action === "decline") {
+    const icon = findMarriageBetween(pending.inviterId, pending.inviteeId) ? "💍" : "🤍";
+    const total = getRelationshipScore(pending.inviterId, pending.inviteeId);
     const embed = new EmbedBuilder()
       .setColor(COZY_COLOR)
       .setTitle("💐 Date Invite")
-      .addFields({
-        name: "Result",
-        value: formatLine(pick(dialogue.dateDeclined), inviterMention, inviteeMention),
-      });
+      .setDescription(
+        [
+          formatLine(pick(dialogue.dateInvites), inviterMention, inviteeMention),
+          "",
+          formatLine(pick(dialogue.dateDeclined), inviterMention, inviteeMention),
+          "",
+          tildesNetLine(0, total, icon),
+        ].join("\n")
+      );
 
     await interaction.update({ embeds: [embed], components: [] });
     return true;
   }
 
   if (action === "accept") {
+    const icon = findMarriageBetween(pending.inviterId, pending.inviteeId) ? "💍" : "🤍";
+    const total = getRelationshipScore(pending.inviterId, pending.inviteeId);
     const embed = new EmbedBuilder()
       .setColor(COZY_COLOR)
       .setTitle("💐 Date Accepted")
-      .setDescription(`${inviterMention} + ${inviteeMention}`)
+      .setDescription(
+        [
+          `${inviterMention} + ${inviteeMention}`,
+          "",
+          tildesNetLine(0, total, icon),
+        ].join("\n")
+      )
       .setFooter({ text: "Settling in…" });
 
     await interaction.update({ embeds: [embed], components: [] });
@@ -833,31 +878,38 @@ async function handleProposeButton(interaction) {
 
   if (action === "decline") {
     const res = adjustRelationshipScore(pending.proposerId, pending.targetId, -15);
+    const icon = findMarriageBetween(pending.proposerId, pending.targetId) ? "💍" : "🤍";
     const embed = new EmbedBuilder()
       .setColor(COZY_COLOR)
       .setTitle("💍 A Proposal")
-      .addFields(
-        {
-          name: "Result",
-          value: formatLine(pick(dialogue.proposeRejected), proposerMention, targetMention),
-        },
-        {
-          name: "🌡 Relationship score",
-          value: `${res.after}/100  (**${res.delta}**)`,
-        }
+      .setDescription(
+        [
+          formatLine(pick(dialogue.proposeLines), proposerMention, targetMention),
+          "",
+          formatLine(pick(dialogue.proposeRejected), proposerMention, targetMention),
+          "",
+          tildesNetLine(res.delta, res.after, icon),
+        ].join("\n")
       );
     await interaction.update({ embeds: [embed], components: [] });
     return true;
   }
 
   if (action === "accept") {
+    const icon = findMarriageBetween(pending.proposerId, pending.targetId) ? "💍" : "🤍";
+    const total = getRelationshipScore(pending.proposerId, pending.targetId);
     const embed = new EmbedBuilder()
       .setColor(COZY_COLOR)
       .setTitle("💍 A Proposal")
-      .addFields({
-        name: "Result",
-        value: formatLine(pick(dialogue.proposeAccepted), proposerMention, targetMention),
-      })
+      .setDescription(
+        [
+          formatLine(pick(dialogue.proposeLines), proposerMention, targetMention),
+          "",
+          formatLine(pick(dialogue.proposeAccepted), proposerMention, targetMention),
+          "",
+          tildesNetLine(0, total, icon),
+        ].join("\n")
+      )
       .setFooter({ text: "Preparing the ceremony…" });
 
     await interaction.update({ embeds: [embed], components: [] });

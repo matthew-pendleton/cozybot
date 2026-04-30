@@ -237,7 +237,6 @@ function relationshipMeter(score, { width = 10, filledChar = "▰", emptyChar = 
 function relationshipStatusWidget(score, { icon = "🤍" } = {}) {
   const meter = relationshipMeter(score);
   return [
-    "💞 Relationship Status",
     " ┌────────┐",
     `${icon} ${meter}`,
     " └────────┘",

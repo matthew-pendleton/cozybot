@@ -6,7 +6,12 @@ const {
   ComponentType,
 } = require("discord.js");
 
-const { addMarriage, adjustRelationshipScore } = require("./relationship");
+const {
+  addMarriage,
+  adjustRelationshipScore,
+  relationshipMeter,
+  findMarriageBetween,
+} = require("./relationship");
 const dialogue = require("./dialogue");
 
 const COZY_COLOR = 0xf4a7b9;
@@ -21,6 +26,16 @@ function sleep(ms) {
 
 function mention(id) {
   return `<@${id}>`;
+}
+
+function formatDelta(delta) {
+  if (delta > 0) return `+${delta}`;
+  if (delta < 0) return `${delta}`;
+  return "0";
+}
+
+function meterLine(score, icon) {
+  return `\`${icon} ${relationshipMeter(score)}  ${score}/100\``;
 }
 
 async function runCeremony({ message, partnerAId, partnerBId }) {
@@ -149,15 +164,19 @@ async function runCeremony({ message, partnerAId, partnerBId }) {
 
   addMarriage(partnerAId, partnerBId);
   const res = adjustRelationshipScore(partnerAId, partnerBId, 15);
+  const icon = findMarriageBetween(partnerAId, partnerBId) ? "💍" : "🤍";
 
   const final = new EmbedBuilder()
     .setColor(COZY_COLOR)
     .setTitle("💍 Congratulations!")
-    .setDescription(`${mention(partnerAId)} and ${mention(partnerBId)} are now married.`)
-    .addFields({
-      name: "🌡 Relationship score",
-      value: `${res.after}/100  (**+${res.delta}**)`,
-    })
+    .setDescription(
+      [
+        `${mention(partnerAId)} and ${mention(partnerBId)} are now married.`,
+        "",
+        `~ ${formatDelta(res.delta)}pts • ${res.after}/100 ~`,
+        meterLine(res.after, icon),
+      ].join("\n")
+    )
     .setFooter({ text: "May your days be soft and your snacks plentiful." });
 
   await message.edit({ embeds: [final], components: [] });
