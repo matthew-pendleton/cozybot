@@ -117,15 +117,8 @@ async function timeoutFlirt(nonce, client) {
     const total = getRelationshipScore(pending.senderId, pending.targetId);
     const icon = findMarriageBetween(pending.senderId, pending.targetId) ? "💍" : "🤍";
 
-    const embed = new EmbedBuilder()
-      .setColor(COZY_COLOR)
-      .setTitle("🌹 Flirt")
-      .setDescription(
-        [intro, "", flirtLine, "", responseLine, "", tildesNetLine(0, total, icon)].join("\n")
-      )
-      .setFooter({ text: "💌 Timed out — no response." });
-
-    await message.edit({ embeds: [embed], components: [] });
+    const content = `${intro} ${flirtLine} ${responseLine} ${tildesNetLine(0, total, icon)}`;
+    await message.edit({ content, embeds: [], components: [] });
   } catch {
     // Best-effort timeout cleanup.
   }
@@ -164,21 +157,7 @@ async function handleFlirtCommand(interaction) {
   const total = getRelationshipScore(sender.id, target.id);
   const icon = findMarriageBetween(sender.id, target.id) ? "💍" : "🤍";
 
-  const embed = new EmbedBuilder()
-    .setColor(COZY_COLOR)
-    .setTitle("🌹 Flirt")
-    .setDescription(
-      [
-        intro,
-        "",
-        flirtLine,
-        "",
-        "💌 What do you think?",
-        "",
-        tildesNetLine(0, total, icon),
-      ].join("\n")
-    )
-    .setFooter({ text: "Target has 60 seconds to respond." });
+  const content = `${intro} ${flirtLine} 💌 ${senderMention} what do you think? ${tildesNetLine(0, total, icon)}`;
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -192,7 +171,7 @@ async function handleFlirtCommand(interaction) {
   );
 
   const message = await interaction.reply({
-    embeds: [embed],
+    content,
     components: [row],
     fetchReply: true,
     allowedMentions: { users: [sender.id, target.id] },
@@ -494,19 +473,8 @@ async function handleDivorceCommand(interaction) {
   const targetMention = `<@${target.id}>`;
   const icon = findMarriageBetween(sender.id, target.id) ? "💍" : "🤍";
 
-  const embed = new EmbedBuilder()
-    .setColor(COZY_COLOR)
-    .setTitle("🕯 Divorce")
-    .setDescription(
-      [
-        formatLine(pick(dialogue.divorceLines), senderMention, targetMention),
-        "",
-        tildesNetLine(res.delta, res.after, icon),
-      ].join("\n")
-    );
-
   await interaction.reply({
-    embeds: [embed],
+    content: `${formatLine(pick(dialogue.divorceLines), senderMention, targetMention)} ${tildesNetLine(res.delta, res.after, icon)}`,
     allowedMentions: { users: [sender.id, target.id] },
   });
 }
@@ -539,19 +507,9 @@ async function handleComplimentCommand(interaction) {
   const senderMention = `<@${sender.id}>`;
   const targetMention = `<@${target.id}>`;
 
-  const embed = new EmbedBuilder()
-    .setColor(COZY_COLOR)
-    .setTitle("💌 A compliment")
-    .setDescription(
-      [
-        formatLine(pick(dialogue.complimentLines), senderMention, targetMention),
-        "",
-        tildesNetLine(res.delta, res.after, findMarriageBetween(sender.id, target.id) ? "💍" : "🤍"),
-      ].join("\n")
-    );
-
+  const icon = findMarriageBetween(sender.id, target.id) ? "💍" : "🤍";
   await interaction.reply({
-    embeds: [embed],
+    content: `${formatLine(pick(dialogue.complimentLines), senderMention, targetMention)} ${tildesNetLine(res.delta, res.after, icon)}`,
     allowedMentions: { users: [sender.id, target.id] },
   });
 }
@@ -584,19 +542,9 @@ async function handleInsultCommand(interaction) {
   const senderMention = `<@${sender.id}>`;
   const targetMention = `<@${target.id}>`;
 
-  const embed = new EmbedBuilder()
-    .setColor(COZY_COLOR)
-    .setTitle("🕯 An insult, tossed like a match")
-    .setDescription(
-      [
-        formatLine(pick(dialogue.insultLines), senderMention, targetMention),
-        "",
-        tildesNetLine(res.delta, res.after, findMarriageBetween(sender.id, target.id) ? "💍" : "🤍"),
-      ].join("\n")
-    );
-
+  const icon = findMarriageBetween(sender.id, target.id) ? "💍" : "🤍";
   await interaction.reply({
-    embeds: [embed],
+    content: `${formatLine(pick(dialogue.insultLines), senderMention, targetMention)} ${tildesNetLine(res.delta, res.after, icon)}`,
     allowedMentions: { users: [sender.id, target.id] },
   });
 }
@@ -716,22 +664,8 @@ async function handleFlirtButton(interaction) {
       senderMention,
       targetMention
     );
-    const embed = new EmbedBuilder()
-      .setColor(COZY_COLOR)
-      .setTitle("🌹 Flirt")
-      .setDescription(
-        [
-          intro,
-          "",
-          flirtLine,
-          "",
-          responseLine,
-          "",
-          tildesNetLine(res.delta, res.after, icon),
-        ].join("\n")
-      )
-      .setFooter({ text: "💌 Response received." });
-    await interaction.update({ embeds: [embed], components: [] });
+    const content = `${intro} ${flirtLine} ${responseLine} ${tildesNetLine(res.delta, res.after, icon)}`;
+    await interaction.update({ content, embeds: [], components: [] });
     return true;
   }
 
@@ -743,22 +677,8 @@ async function handleFlirtButton(interaction) {
       senderMention,
       targetMention
     );
-    const embed = new EmbedBuilder()
-      .setColor(COZY_COLOR)
-      .setTitle("🌹 Flirt")
-      .setDescription(
-        [
-          intro,
-          "",
-          flirtLine,
-          "",
-          responseLine,
-          "",
-          tildesNetLine(res.delta, res.after, icon),
-        ].join("\n")
-      )
-      .setFooter({ text: "💌 Response received." });
-    await interaction.update({ embeds: [embed], components: [] });
+    const content = `${intro} ${flirtLine} ${responseLine} ${tildesNetLine(res.delta, res.after, icon)}`;
+    await interaction.update({ content, embeds: [], components: [] });
     return true;
   }
 
