@@ -4,6 +4,7 @@ const {
   ButtonBuilder,
   ButtonStyle,
   ComponentType,
+  Routes,
 } = require("discord.js");
 
 const {
@@ -39,25 +40,47 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function rehydrateMessage(message, channelHint) {
-  if (message?.channel) return message;
-  if (channelHint?.messages?.fetch) {
-    return await channelHint.messages.fetch(message.id);
-  }
+async function editMessage(client, channelId, messageId, payload) {
+  await client.rest.patch(Routes.channelMessage(channelId, messageId), {
+    body: payload,
+  });
+}
 
-  // No REST channel fetch here: if we can't rehydrate from cache/partial,
-  // let the caller see a clear error (REST fetch can 403 in some setups).
-  throw new Error(
-    `Date: cannot rehydrate message ${message.id} (channel ${message.channelId} not cached/accessible).`
-  );
+function waitForButton({ client, messageId, userId, allowedCustomIds, timeoutMs }) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error("timeout"));
+    }, timeoutMs);
+
+    function cleanup() {
+      clearTimeout(timer);
+      client.off("interactionCreate", onInteraction);
+    }
+
+    async function onInteraction(i) {
+      try {
+        if (!i.isButton()) return;
+        if (i.message?.id !== messageId) return;
+        if (userId && i.user.id !== userId) return;
+        if (allowedCustomIds && !allowedCustomIds.includes(i.customId)) return;
+        cleanup();
+        resolve(i);
+      } catch (err) {
+        cleanup();
+        reject(err);
+      }
+    }
+
+    client.on("interactionCreate", onInteraction);
+  });
 }
 
 async function runDate({ message, channel, inviterId, inviteeId }) {
   try {
-    // Ensure channel/message are fetchable even when cache is cold.
-    // This prevents DiscordjsError: ChannelNotCached from message.edit().
-    // eslint-disable-next-line no-param-reassign
-    message = await rehydrateMessage(message, channel);
+    const client = message.client;
+    const channelId = message.channelId;
+    const messageId = message.id;
 
     const inviterMention = `<@${inviterId}>`;
     const inviteeMention = `<@${inviteeId}>`;
@@ -76,7 +99,10 @@ async function runDate({ message, channel, inviterId, inviteeId }) {
     }
 
     beats.push(pick(dialogue.dateOpening));
-    await message.edit({ embeds: [makeEmbed()], components: [] });
+    await editMessage(client, channelId, messageId, {
+      embeds: [makeEmbed().toJSON()],
+      components: [],
+    });
     await sleep(2000);
 
     for (let round = 1; round <= 2; round += 1) {
@@ -99,7 +125,10 @@ async function runDate({ message, channel, inviterId, inviteeId }) {
         );
       }
 
-      await message.edit({ embeds: [makeEmbed()], components: [] });
+      await editMessage(client, channelId, messageId, {
+        embeds: [makeEmbed().toJSON()],
+        components: [],
+      });
       await sleep(2000);
     }
 
@@ -112,7 +141,10 @@ async function runDate({ message, channel, inviterId, inviteeId }) {
             ? pick(dialogue.dateClosing_positive)
             : pick(dialogue.dateClosing_negative);
     beats.push(`\n${closing}`);
-    await message.edit({ embeds: [makeEmbed()], components: [] });
+    await editMessage(client, channelId, messageId, {
+      embeds: [makeEmbed().toJSON()],
+      components: [],
+    });
     await sleep(2000);
 
     const kissRow = new ActionRowBuilder().addComponents(
@@ -129,17 +161,20 @@ async function runDate({ message, channel, inviterId, inviteeId }) {
     const kissEmbed = makeEmbed().setFooter({
       text: "Invitee has 30 seconds to decide.",
     });
-    await message.edit({ embeds: [kissEmbed], components: [kissRow] });
+    await editMessage(client, channelId, messageId, {
+      embeds: [kissEmbed.toJSON()],
+      components: [kissRow.toJSON()],
+    });
 
     let kissed = false;
     let kissTimedOut = false;
     try {
-      const btn = await message.awaitMessageComponent({
-        componentType: ComponentType.Button,
-        time: 30_000,
-        filter: (i) =>
-          i.user.id === inviteeId &&
-          (i.customId === "cozybot:datekiss:yes" || i.customId === "cozybot:datekiss:no"),
+      const btn = await waitForButton({
+        client,
+        messageId,
+        userId: inviteeId,
+        allowedCustomIds: ["cozybot:datekiss:yes", "cozybot:datekiss:no"],
+        timeoutMs: 30_000,
       });
 
       kissed = btn.customId === "cozybot:datekiss:yes";
@@ -187,7 +222,10 @@ async function runDate({ message, channel, inviterId, inviteeId }) {
         inline: true,
       });
 
-    await message.edit({ embeds: [finalEmbed], components: [] });
+    await editMessage(client, channelId, messageId, {
+      embeds: [finalEmbed.toJSON()],
+      components: [],
+    });
     return { netDelta, positiveRounds, negativeRounds, total };
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -197,7 +235,10 @@ async function runDate({ message, channel, inviterId, inviteeId }) {
         .setColor(0xaa4465)
         .setTitle("💌 Date Night (oops)")
         .setDescription("Something went wrong while running this date. Try again in a moment.");
-      await message.edit({ embeds: [embed], components: [] });
+      await editMessage(message.client, message.channelId, message.id, {
+        embeds: [embed.toJSON()],
+        components: [],
+      });
     } catch {
       // ignore
     }
