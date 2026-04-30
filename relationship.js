@@ -223,14 +223,16 @@ function listSpouses(userId) {
 }
 
 function relationshipBar(score) {
-  const clamped = Math.max(0, Math.min(100, Number(score)));
-  const filled = Math.round((clamped / 100) * 10);
+  const clamped = clampScore(Number(score));
+  const normalized = (clamped - SCORE_MIN) / (SCORE_MAX - SCORE_MIN);
+  const filled = Math.round(normalized * 10);
   return "█".repeat(filled) + "░".repeat(10 - filled);
 }
 
 function relationshipMeter(score, { width = 10, filledChar = "▰", emptyChar = "▱" } = {}) {
-  const clamped = Math.max(0, Math.min(100, Number(score)));
-  const filled = Math.round((clamped / 100) * width);
+  const clamped = clampScore(Number(score));
+  const normalized = (clamped - SCORE_MIN) / (SCORE_MAX - SCORE_MIN);
+  const filled = Math.round(normalized * width);
   return filledChar.repeat(filled) + emptyChar.repeat(width - filled);
 }
 
