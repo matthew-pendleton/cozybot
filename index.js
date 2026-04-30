@@ -3,6 +3,7 @@ require("dotenv").config();
 const {
   Client,
   GatewayIntentBits,
+  Partials,
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
@@ -934,6 +935,7 @@ async function registerCommands() {
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
+  partials: [Partials.Channel],
 });
 
 client.once("ready", async () => {
