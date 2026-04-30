@@ -78,21 +78,21 @@ async function runCeremony({ message, partnerAId, partnerBId }) {
       if (role === "officiant") {
         if (state.officiantId) {
           // eslint-disable-next-line no-await-in-loop
-          await btn.reply({ ephemeral: true, content: "📖 That role is already taken." });
+          await btn.reply({ ephemeral: true, content: "💌 That officiant role is already taken." });
           continue;
         }
         state.officiantId = btn.user.id;
         // eslint-disable-next-line no-await-in-loop
-        await btn.reply({ ephemeral: true, content: "📖 You’re the officiant!" });
+        await btn.reply({ ephemeral: true, content: "💌 You’re the officiant!" });
       } else if (role === "flower") {
         if (state.flowerGirlId) {
           // eslint-disable-next-line no-await-in-loop
-          await btn.reply({ ephemeral: true, content: "💐 That role is already taken." });
+          await btn.reply({ ephemeral: true, content: "💌 That flower girl role is already taken." });
           continue;
         }
         state.flowerGirlId = btn.user.id;
         // eslint-disable-next-line no-await-in-loop
-        await btn.reply({ ephemeral: true, content: "💐 You’re the flower girl!" });
+        await btn.reply({ ephemeral: true, content: "💌 You’re the flower girl!" });
       } else {
         // eslint-disable-next-line no-await-in-loop
         await btn.reply({ ephemeral: true, content: "💌 Unknown role." });

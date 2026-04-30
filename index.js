@@ -115,7 +115,7 @@ async function handleFlirtCommand(interaction) {
   if (target.id === sender.id) {
     await interaction.reply({
       ephemeral: true,
-      content: "🌹 You can’t flirt with yourself… but I respect the confidence.",
+      content: "💌 You can’t flirt with yourself… but I respect the confidence.",
     });
     return;
   }
@@ -210,7 +210,7 @@ async function handleDateCommand(interaction) {
   if (invitee.id === inviter.id) {
     await interaction.reply({
       ephemeral: true,
-      content: "🎀 A solo date is valid, but Cozybot needs two people for this one.",
+      content: "💌 A solo date is valid, but Cozybot needs two people for this one.",
     });
     return;
   }
@@ -308,7 +308,7 @@ async function handleProposeCommand(interaction) {
   if (target.id === proposer.id) {
     await interaction.reply({
       ephemeral: true,
-      content: "🎀 You can’t propose to yourself—save that ring for someone special.",
+      content: "💌 You can’t propose to yourself—save that ring for someone special.",
     });
     return;
   }
@@ -330,7 +330,7 @@ async function handleProposeCommand(interaction) {
   if (proposerMarriages >= MAX_MARRIAGES || targetMarriages >= MAX_MARRIAGES) {
     await interaction.reply({
       ephemeral: true,
-      content: `💍 One of you has reached the marriage limit (**${MAX_MARRIAGES}**).`,
+      content: `💌 One of you has reached the marriage limit (**${MAX_MARRIAGES}**).`,
     });
     return;
   }
@@ -391,7 +391,7 @@ async function handleDivorceCommand(interaction) {
   if (target.id === sender.id) {
     await interaction.reply({
       ephemeral: true,
-      content: "🎀 You can’t divorce yourself (and I’m glad you asked anyway).",
+      content: "💌 You can’t divorce yourself (and I’m glad you asked anyway).",
     });
     return;
   }
@@ -412,7 +412,7 @@ async function handleDivorceCommand(interaction) {
   if (!removed) {
     await interaction.reply({
       ephemeral: true,
-      content: "🕯 I couldn’t finalize that divorce. Try again in a moment.",
+      content: "💌 I couldn’t finalize that divorce. Try again in a moment.",
     });
     return;
   }
@@ -456,7 +456,7 @@ async function handleComplimentCommand(interaction) {
   if (target.id === sender.id) {
     await interaction.reply({
       ephemeral: true,
-      content: "✨ Self-love is cozy, but try pointing that sweetness at someone else.",
+      content: "💌 Self-love is cozy, but try pointing that sweetness at someone else.",
     });
     return;
   }
@@ -492,14 +492,14 @@ async function handleInsultCommand(interaction) {
   if (target.bot) {
     await interaction.reply({
       ephemeral: true,
-      content: "🕯 Bots can’t be insulted… but I admire the commitment.",
+      content: "💌 Bots can’t be insulted… but I admire the commitment.",
     });
     return;
   }
   if (target.id === sender.id) {
     await interaction.reply({
       ephemeral: true,
-      content: "🎀 Be a little kinder to yourself, okay?",
+      content: "💌 Be a little kinder to yourself, okay?",
     });
     return;
   }
@@ -545,7 +545,7 @@ async function handleStatusCommand(interaction) {
     if (user1.id === user2.id) {
       await interaction.reply({
         ephemeral: true,
-        content: "💌 If you want, I can confirm you’re in a relationship with… yourself.",
+        content: "💌 I can confirm that you... Are sort of in a relationship with... yourself.",
       });
       return;
     }
@@ -613,7 +613,7 @@ async function handleFlirtButton(interaction) {
   if (interaction.user.id !== pending.targetId) {
     await interaction.reply({
       ephemeral: true,
-      content: "🎀 These buttons are just for the person being flirted with.",
+      content: "💌 These buttons are just for the person being flirted with.",
     });
     return true;
   }
@@ -684,7 +684,7 @@ async function handleDateInviteButton(interaction) {
   if (interaction.user.id !== pending.inviteeId) {
     await interaction.reply({
       ephemeral: true,
-      content: "🎀 These buttons are just for the invited person.",
+      content: "💌 These buttons are just for the invited person.",
     });
     return true;
   }
@@ -748,7 +748,7 @@ async function handleProposeButton(interaction) {
   if (interaction.user.id !== pending.targetId) {
     await interaction.reply({
       ephemeral: true,
-      content: "🎀 These buttons are just for the person being proposed to.",
+      content: "💌 These buttons are just for the person being proposed to.",
     });
     return true;
   }
@@ -947,7 +947,7 @@ client.on("interactionCreate", async (interaction) => {
 
   await interaction.reply({
     ephemeral: true,
-    content: `That subcommand (\`${sub}\`) isn’t wired up yet — coming next.`,
+    content: `💌 That subcommand (\`${sub}\`) isn’t wired up yet — coming next.`,
   });
 });
 

@@ -1,3 +1,5 @@
 node_modules/
 .env
 cozybot.db
+cozybot.db-shm
+cozybot.db-wal
