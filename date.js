@@ -39,21 +39,25 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function rehydrateMessage(message) {
+async function rehydrateMessage(message, channelHint) {
   if (message?.channel) return message;
-  const channel = await message.client.channels.fetch(message.channelId);
-  if (!channel || !channel.isTextBased()) {
+  const channel = channelHint && channelHint.isTextBased?.() ? channelHint : null;
+  if (channel) return await channel.messages.fetch(message.id);
+
+  // Fallback (may fail with Missing Access in some setups)
+  const fetched = await message.client.channels.fetch(message.channelId);
+  if (!fetched || !fetched.isTextBased()) {
     throw new Error(`Date: channel ${message.channelId} is not text-based or missing.`);
   }
-  return await channel.messages.fetch(message.id);
+  return await fetched.messages.fetch(message.id);
 }
 
-async function runDate({ message, inviterId, inviteeId }) {
+async function runDate({ message, channel, inviterId, inviteeId }) {
   try {
     // Ensure channel/message are fetchable even when cache is cold.
     // This prevents DiscordjsError: ChannelNotCached from message.edit().
     // eslint-disable-next-line no-param-reassign
-    message = await rehydrateMessage(message);
+    message = await rehydrateMessage(message, channel);
 
     const inviterMention = `<@${inviterId}>`;
     const inviteeMention = `<@${inviteeId}>`;

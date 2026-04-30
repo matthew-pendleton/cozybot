@@ -754,6 +754,7 @@ async function handleDateInviteButton(interaction) {
     try {
       await runDate({
         message: interaction.message,
+        channel: interaction.channel,
         inviterId: pending.inviterId,
         inviteeId: pending.inviteeId,
       });
@@ -838,6 +839,7 @@ async function handleProposeButton(interaction) {
     await interaction.update({ embeds: [embed], components: [] });
     await runCeremony({
       message: interaction.message,
+      channel: interaction.channel,
       partnerAId: pending.proposerId,
       partnerBId: pending.targetId,
     });
