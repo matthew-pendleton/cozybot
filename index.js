@@ -286,7 +286,7 @@ async function timeoutProposal(nonce, client) {
     embed.setFooter({ text: "💌 Timed out — no response." });
     embed.addFields({
       name: "Result",
-      value: "🕯 The proposal hangs in the air… then fades.",
+      value: "💌 Oof. Left them on read. In front of everyone.",
     });
     await message.edit({ embeds: [embed], components: [] });
   } catch {
@@ -328,9 +328,12 @@ async function handleProposeCommand(interaction) {
   const proposerMarriages = getMarriageCount(proposer.id);
   const targetMarriages = getMarriageCount(target.id);
   if (proposerMarriages >= MAX_MARRIAGES || targetMarriages >= MAX_MARRIAGES) {
+    const line =
+      pick(dialogue.marriageLimitLines)?.replaceAll("{limit}", String(MAX_MARRIAGES)) ??
+      `💌 One of you has reached the marriage limit (**${MAX_MARRIAGES}**).`;
     await interaction.reply({
       ephemeral: true,
-      content: `💌 One of you has reached the marriage limit (**${MAX_MARRIAGES}**).`,
+      content: line,
     });
     return;
   }
